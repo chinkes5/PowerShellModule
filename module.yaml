@@ -1,0 +1,107 @@
+name: "Build My PowerShell Module"
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - PowerShell/Mymodule/*
+    exclude:
+      - "*/README.MD"
+
+pool:
+  vmImage: windows-latest
+  # vmImage: "ubuntu-latest"
+
+variables:
+  major: 1
+  minor: 1
+  patch: $(Build.BuildID)
+  buildVer: $(major).$(minor).$(patch)
+
+stages:
+  - stage: Make_Module
+    jobs:
+      - job: Build_Test
+        steps:
+          - checkout: self
+          - task: PowerShell@2
+            displayName: "Build My PowerShell Module"
+            inputs:
+              filePath: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/build.ps1"
+          - task: PowerShell@2
+            displayName: "Copy Module to StagingDirectory"
+            inputs:
+              filePath: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/copy.ps1"
+          - task: Pester@10 ## If a new version is out, you may have to increment this
+            displayName: "Run Pester Tests"
+            enabled: false
+            continueOnError: true
+            inputs:
+              scriptFolder: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/Tests/Module-tests"
+              resultsFile: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/Tests/Tests.XML"
+              usePSCore: false
+              run32Bit: False
+              # preferredPesterVersion: '4.10.1'
+          - task: PowerShell@2
+            displayName: "Invoke Pester Tests"
+            enabled: false
+            continueOnError: true
+            inputs:
+              filePath: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/test.ps1"
+          - task: PublishTestResults@2
+            displayName: "Publish Test Results"
+            inputs:
+              testResultsFormat: "NUnit"
+              testResultsFiles: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/Tests/Tests.XML"
+              failTaskOnFailedTests: true
+          # - task: PSCodeHealth@1
+          #   displayName: "Run PSCodeHealth"
+          #   inputs:
+          #     path: "$(System.DefaultWorkingDirectory)/PowerShell/RSImodule"
+          #     outputFile: "$(System.DefaultWorkingDirectory)/PowerShell/RSImodule/PSCodeHealth.xml"
+          #     severityThreshold: "Error"
+          - task: PowerShell@2
+            displayName: "Make Help Files"
+            enabled: false
+            inputs:
+              filePath: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/helpFiles.ps1"
+          - task: NuGetToolInstaller@1
+            displayName: "Install NuGet"
+            inputs:
+              versionSpec:
+          - task: NuGetCommand@2
+            displayName: "Pack NuGet package"
+            inputs:
+              command: "pack"
+              packagesToPack: "$(Build.StagingDirectory)/**/*.nuspec"
+              versioningScheme: "byEnvVar"
+              versionEnvVar: buildVer
+              buildProperties: "VERSIONHERE=$(buildVer)"
+          - task: PublishBuildArtifacts@1
+            displayName: "Publish Artifact"
+            inputs:
+              PathtoPublish: "$(Build.StagingDirectory)"
+              ArtifactName: "Mymodule"
+              publishLocation: "Container"
+      - job: Deploy
+        dependsOn: Build_Test
+        steps:
+          - checkout: none
+          - task: NuGetAuthenticate@1
+            displayName: "Authenticate with NuGet"
+          - task: DownloadPipelineArtifact@2
+            displayName: "Download Artifact"
+            inputs:
+              buildType: "current"
+              artifactName: "Mymodule"
+              itemPattern: "**"
+              targetPath: "$(Pipeline.Workspace)"
+          - task: NuGetCommand@2
+            displayName: "push NuGet File"
+            inputs:
+              command: "push"
+              packagesToPush: "$(Pipeline.Workspace)/*.nupkg"
+              nuGetFeedType: "internal"
+              publishVstsFeed: "Mychinkes"
+

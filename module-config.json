@@ -1,0 +1,9 @@
+{
+    "name": "My_PS_Module",
+    "description": "PowerShell module for use by my team for standard operations",
+    "Author": "John Chinkes",
+    "CompanyName": "Your Company Name",
+    "CopyrightStartYear": 2024,
+    "GUID": "c9b2c1a5-0b5e-4b8e-8b8e-3c5b2c1a5c9b",
+    "PowerShellVersion": "5.0"
+  }
