@@ -13,7 +13,7 @@ Write-Output "Manifest Path: $manifestPath"
 if (Test-Path $manifestPath) {
     Write-Output "found Manifest file updated on: $((Get-Item $manifestPath).LastWriteTimeUtc)"
 
-    Write-Host "##[info] Copy new module to build staging directory, '$($env:Build_StagingDirectory)'..."
+    Write-Host "##[info] Copy new module to build staging directory, '$($env:Build_StagingDirectory)' for subsequent testing steps..."
     $destination = Join-Path $env:Build_StagingDirectory -ChildPath "$($config.name)"
     if (-not (Test-Path $destination)) {
         New-Item $destination -ItemType Directory

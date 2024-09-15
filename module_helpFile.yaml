@@ -5,7 +5,7 @@ trigger:
       - main
   paths:
     include:
-      - PowerShell/Mymodule/*
+      - Pipelines/ModuleSample/*
     exclude:
       - "*/README.MD"
 
@@ -28,11 +28,29 @@ stages:
           - task: PowerShell@2
             displayName: "Build My PowerShell Module"
             inputs:
-              filePath: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/build.ps1"
+              filePath: "$(System.DefaultWorkingDirectory)/Pipelines/ModuleSample/build.ps1"
           - task: PowerShell@2
             displayName: "Copy Module to StagingDirectory"
             inputs:
-              filePath: "$(System.DefaultWorkingDirectory)/PowerShell/Mymodule/copy.ps1"
+              filePath: "$(System.DefaultWorkingDirectory)/Pipelines/ModuleSample/copy.ps1"
+          - task: PowerShell@2
+            displayName: "Invoke Pester Tests"
+            enabled: true
+            continueOnError: true
+            inputs:
+              filePath: "$(System.DefaultWorkingDirectory)/Pipelines/ModuleSample/test.ps1"
+          - task: PublishTestResults@2
+            displayName: "Publish Test Results"
+            inputs:
+              testResultsFormat: "NUnit"
+              testResultsFiles: "$(Build.StagingDirectory)/Pipelines/ModuleSample/Tests/Tests.XML"
+              failTaskOnFailedTests: true
+          - task: PowerShell@2
+            displayName: "Make Help Files"
+            enabled: true
+            continueOnError: true
+            inputs:
+              filePath: "$(System.DefaultWorkingDirectory)/Pipelines/ModuleSample/helpFiles.ps1"
           - task: NuGetToolInstaller@1
             displayName: "Install NuGet"
             inputs:
@@ -61,7 +79,7 @@ stages:
             displayName: "Download Artifact"
             inputs:
               buildType: "current"
-              artifactName: "Mymodule"
+              artifactName: "MySampleModule"
               itemPattern: "**"
               targetPath: "$(Pipeline.Workspace)"
           - task: NuGetCommand@2
@@ -70,5 +88,4 @@ stages:
               command: "push"
               packagesToPush: "$(Pipeline.Workspace)/*.nupkg"
               nuGetFeedType: "internal"
-              publishVstsFeed: "MyFeed"
-
+              publishVstsFeed: "rsichinkes"

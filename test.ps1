@@ -7,11 +7,15 @@ $hasPrivateFunctions = $env:hasPrivateFunctions
 $hasPesterTests = $env:hasPesterTests
 Write-Host "##[info] Got these- private = '$hasPrivateFunctions', and tests = '$hasPesterTests'"
 
-$manifestPath = Join-Path -Path $projectRoot -ChildPath "$($config.name).psd1"
+# Running my tests off the copy in the staging directory
+$modulePath = Join-Path -Path $env:Build_StagingDirectory -ChildPath "$($config.name)"
+$manifestPath = Join-Path -Path $modulePath -ChildPath "$($config.name).psd1"
 Write-Output "Manifest Path: $manifestPath"
-$testList = Join-Path (Join-Path $projectRoot -ChildPath "Tests") -ChildPath "Module-tests"
+$testList = Join-Path $modulePath -ChildPath "Tests"
 Write-Output "Tests Path: $testList"
-$testResultFile = Join-Path $projectRoot -ChildPath (Join-Path "Tests" -ChildPath "Tests.XML")
+$testResultFile = Join-Path $modulePath -ChildPath (Join-Path "Tests" -ChildPath "Tests.XML")
 Write-Output "Results Path: $testResultFile"
 
+Import-Module PSScriptAnalyzer -Verbose
+Import-Module Pester -Verbose
 Invoke-Pester -Script $testList -OutputFile $testResultFile -OutputFormat NUnitXml
