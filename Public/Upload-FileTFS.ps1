@@ -15,7 +15,7 @@ URL to the TFS project, no protocol, includes collection.
 .PARAMETER apiVersion
 Version of Azure DevOps REST API
 .EXAMPLE
-Upload-FileToTFS -TFSID "MD12345" -InputFile "C:\Path\To\File.sql" -Credential (Get-Credential)
+Upload-FileToTFS -TFSID "SQ12345" -InputFile "C:\Path\To\File.sql" -Credential (Get-Credential)
 #>
 
     param (

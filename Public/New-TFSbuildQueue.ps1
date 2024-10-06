@@ -4,6 +4,8 @@ function New-TFSbuildQueue {
 Triggers a build without any parameters based on the build ID supplied
 .DESCRIPTION
 doesn't allow for any parameters to be set on build!
+.PARAMETER apiVersion
+Version of Azure DevOps REST API
 .PARAMETER BuildID
 The TFS query for fetching the work items. This parameter is mandatory.
 .PARAMETER BuildParameters
@@ -14,8 +16,6 @@ The credentials for accessing the TFS server. This parameter should be of type `
 A PATS token to use to authenticate the request when sent to TFS server
 .PARAMETER tfsURL
 URL to the TFS project, no protocol, includes collection.
-.PARAMETER apiVersion
-Version of Azure DevOps REST API
 .EXAMPLE
 New-TFSbuildQueue -BuildID 166 -Credential $credential
 #TODO: add second example with build parameters
@@ -24,13 +24,14 @@ https://learn.microsoft.com/en-us/rest/api/azure/devops/
 #>
     [CmdletBinding()]
     param (
+        [Parameter(HelpMessage = 'Version of Azure DevOps REST API', Mandatory = $true)][string] $apiVersion,
         [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$BuildID,
         [Parameter()][hashtable[]]$BuildParameters,
         [Parameter(Mandatory = $true, ParameterSetName = 'cred')][ValidateNotNullOrEmpty()][PSCredential]$Credential,
         [Parameter(Mandatory = $true, ParameterSetName = 'pats')][ValidateNotNullOrEmpty()][string]$PATS,
-        [Parameter(HelpMessage = 'Version of Azure DevOps REST API', Mandatory = $true)][string] $apiVersion,
         [Parameter(HelpMessage = 'URL to the TFS project, no protocol, includes collection.', Mandatory = $true)][string] $tfsURL
     )
+
 
     if ($env:My_Module_Config) {
         Write-Verbose "Found config ENV:, reading..."

@@ -4,29 +4,30 @@ function New-TFSvariableGroup {
 Creates a new Pipeline Library from the inputted json file, or if using alias 'Update-', updates existing values.
 .DESCRIPTION
 The `New-TFSvariableGroup` function creates a new Pipeline Library from the inputted json file. It will overwrite any matching library and values. It uses the TFS REST API to send a POST request to the TFS server.
+.PARAMETER apiVersion
+Version of Azure DevOps REST API
 .PARAMETER Credential
 The credentials for the TFS server. This parameter is mandatory unless PATS parameter is used.
 .PARAMETER PATS
 A PATS token to use to authenticate the request when sent to TFS server. This parameter is mandatory unless Credential parameter is used.
-.PARAMETER variableJSON
-The description to add to the TFS work item. Needs to adhere to the standard as written in https://learn.microsoft.com/en-us/rest/api/azure/devops/distributedtask/variablegroups/add?view=azure-devops-server-rest-5.0&tabs=HTTP.
 .PARAMETER tfsURL
 URL to the TFS project, no protocol, includes collection.
-.PARAMETER apiVersion
-Version of Azure DevOps REST API
+.PARAMETER variableJSON
+The description to add to the TFS work item. Needs to adhere to the standard as written in https://learn.microsoft.com/en-us/rest/api/azure/devops/distributedtask/variablegroups/add?view=azure-devops-server-rest-5.0&tabs=HTTP.
 .EXAMPLE
 New-TFSvariableGroup -Credential $credential -variableJSON "C:\Temp\vars.json"
 .LINK
 https://learn.microsoft.com/en-us/rest/api/azure/devops/
+ https://learn.microsoft.com/en-us/rest/api/azure/devops/distributedtask/variablegroups/add?
 #>
     [CmdletBinding()]
     [Alias("Update-TFSvariableGroup")]
     param (
+        [Parameter(Mandatory = $true, HelpMessage = 'Version of Azure DevOps REST API')][string] $apiVersion,
         [Parameter(Mandatory = $true, ParameterSetName = 'cred')][ValidateNotNullOrEmpty()][PSCredential]$Credential,
         [Parameter(Mandatory = $true, ParameterSetName = 'pats')][ValidateNotNullOrEmpty()][string]$PATS,
-        [Parameter(Mandatory = $true, HelpMessage = 'The json file to input new variables')][System.IO.FileInfo]$variableJSON,
-        [Parameter(HelpMessage = 'Version of Azure DevOps REST API', Mandatory = $true)][string] $apiVersion,
-        [Parameter(HelpMessage = 'URL to the TFS project, no protocol, includes collection.', Mandatory = $true)][string] $tfsURL
+        [Parameter(HelpMessage = 'URL to the TFS project, no protocol, includes collection.', Mandatory = $true)][string] $tfsURL,
+        [Parameter(Mandatory = $true, HelpMessage = 'The json file to input new variables')][System.IO.FileInfo]$variableJSON
     )
 
     if ($env:My_Module_Config) {

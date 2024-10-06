@@ -4,20 +4,20 @@ function Get-ChangesetCountSinceBuild {
     Gets the count of new changesets in the repo since the last successful build of the definition ID given
     .DESCRIPTION
     Gets the count of new changesets in the repo since the last successful build of the definition ID given
-    .PARAMETER PAT
-    A PAT that has access to the TFS project
+    .PARAMETER apiVersion
+    Version of Azure DevOps REST API
     .PARAMETER BuildID
     Build definition ID to get last successful build of
+    .PARAMETER PAT
+    A PAT that has access to the TFS project
     .PARAMETER RepoPath
     The path to the TFS repo
     .PARAMETER tfsURL
     URL to the TFS project, no protocol, includes collection., includes collection., includes collection.
-    .PARAMETER apiVersion
-    Version of Azure DevOps REST API
     .EXAMPLE
-    Get-ChangesetCountSinceBuild -PAT $PATS -tfsURL $tfsURL -BuildID 188 -RepoPath 'INT' -apiVersion 1.0
+    Get-ChangesetCountSinceBuild -PAT $PATS -tfsURL "https://dev.azure.com/contoso/foobar" -BuildID 188 -RepoPath 'DEV' -apiVersion '7.0'
 
-    Returns a count of changesets in branch INT since the last successful build in ID 188
+    Returns a count of changesets in branch DEV since the last successful build in ID 188
     #>
     param(
         [Parameter(HelpMessage = 'Version of Azure DevOps REST API', Mandatory = $true)][string] $apiVersion,
