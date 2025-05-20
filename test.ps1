@@ -10,12 +10,25 @@ Write-Host "##[info] Got these- private = '$hasPrivateFunctions', and tests = '$
 # Running my tests off the copy in the staging directory
 $modulePath = Join-Path -Path $env:Build_StagingDirectory -ChildPath "$($config.name)"
 $manifestPath = Join-Path -Path $modulePath -ChildPath "$($config.name).psd1"
+if (Test-Path $manifestPath) {
 Write-Output "Manifest Path: $manifestPath"
 $testList = Join-Path $modulePath -ChildPath "Tests"
 Write-Output "Tests Path: $testList"
-$testResultFile = Join-Path $modulePath -ChildPath (Join-Path "Tests" -ChildPath "Tests.XML")
-Write-Output "Results Path: $testResultFile"
 
 Import-Module PSScriptAnalyzer -Verbose
 Import-Module Pester -Verbose
-Invoke-Pester -Script $testList -OutputFile $testResultFile -OutputFormat NUnitXml
+    Import-Module $manifestPath -Force -Verbose
+    Get-Module $manifestPath -ListAvailable
+    $config = New-PesterConfiguration
+    $config.Run.Path = $testList
+    $config.CodeCoverage.Enabled = $true
+    $config.CodeCoverage.outputPath = $manifestPath
+    $config.TestResult.Enabled = $true
+    $config.TestResult.OutputPath = Join-Path $testList -ChildPath "Tests.XML"
+    $config.TestResult.OutputFormat = "NUnit3"
+    Invoke-Pester -Configuration $config
+}
+else {
+    Write-Host "##[warning] Manifest Path: $manifestPath does not exist"
+    Resolve-Path "$($env:Build_StagingDirectory)\**\*.psd1" -Verbose
+}

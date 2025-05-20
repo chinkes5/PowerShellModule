@@ -16,10 +16,11 @@ Import-Module -Name (Join-Path -Path $moduleRoot -ChildPath "$($config.name).psd
 
 Write-Host "##[info] Export markdown from context help in each function..."
 $functions = Get-ChildItem -Path (Join-Path -Path $moduleRoot -ChildPath "Public") -Filter *.ps1
+$mdFilePath = (Join-Path -Path $PSScriptRoot -ChildPath "docs")
 foreach ($function in $functions) {
     Write-Host "##[info] Exporting markdown for $($function.BaseName)..."
     $functionName = ($function.BaseName).Replace("Get-", "")
-    $outputFile = Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath "docs") -ChildPath "$($functionName).md"
+    $outputFile = Join-Path -Path $mdFilePath -ChildPath "$($functionName).md"
     $markdownParams = @{
         Command               = $function.BaseName
         OutputFolder          = $outputFile
@@ -30,8 +31,14 @@ foreach ($function in $functions) {
 }
 
 Write-Host "##[info] Convert markdown to to MAML..."
-$mamlFile = Join-Path -Path (Join-Path -Path $moduleRoot -ChildPath "en-US") -ChildPath "$($config.name).help.xml"
-New-ExternalHelp -Path (Join-Path -Path $moduleRoot -ChildPath "docs") -OutputFile $mamlFile -Verbose
+# $mamlFile = Join-Path -Path (Join-Path -Path $moduleRoot -ChildPath "en-US") -ChildPath "$($config.name).help.xml"
+$mamlFile = Join-Path -Path $moduleRoot -ChildPath "en-US"
+# New-ExternalHelp -Path (Join-Path $mdFilePath -ChildPath "*.md") -OutputPath $mamlFile -Verbose
+New-ExternalHelp -Path $mdFilePath -OutputPath $mamlFile -Verbose
 
-# TODO: add en-US folder to nuspec file
+Write-Output "Updating nuspec file with new help files..."
+$settings = [xml](Get-Content "$projectRoot/$($config.name).nuspec")
+$settings.package.metadata.files.file | ? {$_.src -eq 'en-US'} | % {$settings.package.metadata.files.RemoveChild($_)}
+$settings.package.metadata.files.AppendChild($settings.CreateElement('file')) | % {$_.SetAttribute('src', 'en-US/**'); $_.SetAttribute('target', 'en-US/.')}
+$settings.Save("$projectRoot\$($config.name).nuspec")
 Write-Output "Built MAML help files!"

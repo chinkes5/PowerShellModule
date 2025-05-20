@@ -1,0 +1,103 @@
+name: "Build My PowerShell Module"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "PowerShell/Mymodule/*" # Triggers on changes to files directly under PowerShell/Mymodule/
+      - "!PowerShell/Mymodule/README.MD" # Excludes README.MD directly under PowerShell/Mymodule/
+
+env:
+  MAJOR: 1
+  MINOR: 0
+  # BUILD_VER will be constructed in a step using MAJOR, MINOR, and github.run_id
+
+jobs:
+  build_test:
+    name: Build and Test
+    runs-on: windows-latest
+    outputs:
+      build_ver: ${{ steps.set_version.outputs.build_ver }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set Build Version
+        id: set_version
+        shell: pwsh
+        run: |
+          $patch = "${{ github.run_id }}"
+          $buildVer = "${{ env.MAJOR }}.${{ env.MINOR }}.$patch"
+          echo "BUILD_VER=$buildVer" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "::set-output name=build_ver::$buildVer"
+
+      - name: Build My PowerShell Module
+        shell: pwsh
+        run: ${{ github.workspace }}/PowerShell/Mymodule/build.ps1
+        # Ensure build.ps1 produces output that copy.ps1 can use
+
+      - name: Copy Module to Staging Directory
+        shell: pwsh
+        run: ${{ github.workspace }}/PowerShell/Mymodule/copy.ps1
+        env:
+          # Assuming copy.ps1 uses this env var to know where to place files.
+          # It should create a 'staging' directory with the module content and the .nuspec file.
+          # e.g., staging/Mymodule.nuspec and staging/Mymodule/* (module files)
+          STAGING_DIR: ${{ github.workspace }}/staging
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1
+        # 'versionSpec' was empty in ADO, so default (latest) for setup-nuget is fine.
+
+      - name: Pack NuGet package
+        shell: pwsh
+        run: |
+          # Ensure Mymodule.nuspec is in the staging directory by copy.ps1
+          # The -BasePath assumes that files listed in Mymodule.nuspec are relative to the staging directory.
+          nuget pack "${{ github.workspace }}/staging/Mymodule.nuspec" `
+            -Version "${{ env.BUILD_VER }}" `
+            -Properties "VERSIONHERE=${{ env.BUILD_VER }}" `
+            -OutputDirectory "${{ github.workspace }}/staging" `
+            -BasePath "${{ github.workspace }}/staging"
+        # This command will create the .nupkg file in the 'staging' directory.
+
+      - name: Publish NuGet Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mymodule # Matches ArtifactName in ADO
+          path: ${{ github.workspace }}/staging/*.nupkg # Upload only the .nupkg file(s)
+
+  deploy:
+    name: Deploy
+    needs: build_test # Depends on the build_test job
+    runs-on: windows-latest
+    env:
+      BUILD_VER: ${{ needs.build_test.outputs.build_ver }}
+    steps:
+      # No 'checkout' needed as we are only downloading artifacts and pushing.
+
+      - name: Download NuGet Package Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Mymodule # Matches the artifact name from build_test job
+          path: ${{ github.workspace }}/package-to-push # Download .nupkg into this directory
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1
+
+      - name: Authenticate with Azure Artifacts NuGet Feed
+        shell: pwsh
+        env:
+          AZURE_DEVOPS_FEED_URL: ${{ secrets.AZURE_DEVOPS_FEED_URL }} # e.g., https://pkgs.dev.azure.com/yourorg/_packaging/MyFeed/nuget/v3/index.json
+          ADO_PAT: ${{ secrets.ADO_PAT }} # Your Azure DevOps Personal Access Token
+        run: |
+          nuget sources Add -Name "MyFeed" -Source "${{ env.AZURE_DEVOPS_FEED_URL }}" -UserName "PAT" -Password "${{ env.ADO_PAT }}" -StorePasswordInClearText
+          # Note: -StorePasswordInClearText is used for nuget.exe. Consider credential providers for enhanced security if possible.
+
+      - name: Push NuGet Package
+        shell: pwsh
+        run: |
+          # Push the .nupkg from the download directory
+          # The ApiKey can be any non-empty string when using an authenticated feed like Azure Artifacts.
+          nuget push "${{ github.workspace }}/package-to-push/*.nupkg" -Source "MyFeed" -ApiKey "AzureDevOps"
